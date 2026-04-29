@@ -1,14 +1,14 @@
 import os
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from config import GEMINI_MODEL
 from src.vector_store import VectorIndexManager
 
 class ComplianceEngine:
     def __init__(self, api_key=None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        if self.api_key:
-            genai.configure(api_key=self.api_key)
+        self.client = genai.Client(api_key=self.api_key) if self.api_key else genai.Client()
         self.vector_store = VectorIndexManager()
         
         self.system_prompt = """
@@ -41,9 +41,6 @@ class ComplianceEngine:
         search_query = doc_text[:500] 
         context = self.vector_store.get_context_with_citations(search_query, n_results=10)
         
-        # 2. Call Gemini
-        model = genai.GenerativeModel(GEMINI_MODEL)
-        
         prompt = f"""
         {self.system_prompt}
 
@@ -57,9 +54,12 @@ class ComplianceEngine:
         """
         
         try:
-            response = model.generate_content(
-                prompt,
-                generation_config={"response_mime_type": "application/json"}
+            response = self.client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
             )
             return json.loads(response.text)
         except Exception as e:

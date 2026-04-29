@@ -1,11 +1,6 @@
-streamlit
-langchain
-langchain-community
-langchain-ollama
-langchain-huggingface
-langchain-chroma
+customtkinter
 docling
-sentence-transformers
 chromadb
-python-dotenv
+sentence-transformers
+google-genai
 pydantic

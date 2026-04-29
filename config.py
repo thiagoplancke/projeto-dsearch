@@ -2,26 +2,28 @@ import os
 from pathlib import Path
 
 # Base Paths
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).parent.absolute()
 DATA_DIR = BASE_DIR / "data"
-DOCS_DIR = DATA_DIR / "documents"
-CHROMA_DIR = DATA_DIR / "chroma_db"
+SRC_DIR = BASE_DIR / "src"
+OUTPUT_DIR = BASE_DIR / "output"
+TESTS_DIR = BASE_DIR / "tests"
 
-# Create directories if they don't exist
-os.makedirs(DOCS_DIR, exist_ok=True)
-os.makedirs(CHROMA_DIR, exist_ok=True)
+# Specific Data Paths
+BASE_LEGAL_DIR = DATA_DIR / "base_legal"
+UPLOADS_DIR = DATA_DIR / "uploads"
+VECTOR_DB_DIR = DATA_DIR / "vector_db"
 
-# LLM Configuration
-OLLAMA_BASE_URL = "http://localhost:11434"
-LLM_MODEL = "llama3" # Pode ser alterado para 'mistral' ou outro modelo disponível localmente
-LLM_TEMPERATURE = 0.1 # Baixa temperatura para reduzir alucinação
+# Database
+DB_PATH = BASE_DIR / "database.db"
 
-# Embeddings Configuration
+# LLM & Embeddings
+# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
+GEMINI_MODEL = "gemini-1.5-flash"  # Using 1.5 Flash as standard stable version
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
-# Chunking Configuration
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
+# Security
+SECRET_KEY = "sacr_secret_key_change_me"
 
-# Retrieval Configuration
-TOP_K_RETRIEVAL = 3
+# Ensure directories exist
+for path in [DATA_DIR, OUTPUT_DIR, TESTS_DIR, BASE_LEGAL_DIR, UPLOADS_DIR, VECTOR_DB_DIR]:
+    path.mkdir(parents=True, exist_ok=True)

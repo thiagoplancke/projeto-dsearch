@@ -1,6 +1,0 @@
-customtkinter
-docling
-chromadb
-sentence-transformers
-google-generativeai
-pydantic
