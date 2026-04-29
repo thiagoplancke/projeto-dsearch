@@ -3,6 +3,23 @@ from pathlib import Path
 
 # Base Paths
 BASE_DIR = Path(__file__).parent.absolute()
+
+def load_env_file(env_path):
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+load_env_file(BASE_DIR / ".env")
+
 DATA_DIR = BASE_DIR / "data"
 SRC_DIR = BASE_DIR / "src"
 OUTPUT_DIR = BASE_DIR / "output"
@@ -17,8 +34,8 @@ VECTOR_DB_DIR = DATA_DIR / "vector_db"
 DB_PATH = BASE_DIR / "database.db"
 
 # LLM & Embeddings
-# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
-GEMINI_MODEL = "gemini-1.5-flash"  # Using 1.5 Flash as standard stable version
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip().strip('"').strip("'")
+GEMINI_MODEL = "gemini-2.5-flash"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 # Security

@@ -1,4 +1,5 @@
 import os
+import threading
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -149,30 +150,61 @@ class SACRApp(ctk.CTk):
     def run_audit(self):
         path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
         if path:
-            self.audit_status_label.configure(text="Processando documento (IA)...", text_color=COLOR_ACCENT)
-            self.update()
-            
-            # 1. Process PDF
+            self.btn_select_doc.configure(state="disabled", text="Processando...")
+            self.audit_status_label.configure(
+                text="Processando documento. Esta etapa pode levar alguns minutos.",
+                text_color=COLOR_ACCENT
+            )
+
+            worker = threading.Thread(
+                target=self._run_audit_worker,
+                args=(path, self.current_user['id']),
+                daemon=True
+            )
+            worker.start()
+
+    def _run_audit_worker(self, path, uploader_id):
+        try:
             text, quality = self.processor.process_pdf(path)
-            
-            # 2. Run IA Engine
+            if not text:
+                raise RuntimeError("Não foi possível extrair texto do PDF selecionado.")
+
             result_json = self.engine.audit_document(text, os.path.basename(path))
-            
-            # 3. Register in DB as 'Pendente de Revisão'
+
             import sqlite3
             from config import DB_PATH
             conn = sqlite3.connect(DB_PATH)
-            cur = conn.cursor()
-            cur.execute("INSERT INTO documents (filename, original_path, status, uploader_id) VALUES (?, ?, ?, ?)",
-                        (os.path.basename(path), path, 'Pendente de Revisão', self.current_user['id']))
-            doc_id = cur.lastrowid
-            conn.commit()
-            conn.close()
-            
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO documents (filename, original_path, status, uploader_id) VALUES (?, ?, ?, ?)",
+                    (os.path.basename(path), path, 'Pendente de Revisão', uploader_id)
+                )
+                doc_id = cur.lastrowid
+                conn.commit()
+            finally:
+                conn.close()
+
             self.router.register_initial_analysis(doc_id, result_json)
-            
-            self.audit_status_label.configure(text="Auditoria concluída! Aguardando revisão do ADM.", text_color="green")
-            messagebox.showinfo("Sucesso", "Análise enviada para o painel de revisão.")
+            self.after(0, self._finish_audit_success)
+        except Exception as e:
+            self.after(0, self._finish_audit_error, str(e))
+
+    def _finish_audit_success(self):
+        self.btn_select_doc.configure(state="normal", text="Selecionar Documento Técnico")
+        self.audit_status_label.configure(
+            text="Auditoria concluída! Aguardando revisão do ADM.",
+            text_color="green"
+        )
+        messagebox.showinfo("Sucesso", "Análise enviada para o painel de revisão.")
+
+    def _finish_audit_error(self, error_message):
+        self.btn_select_doc.configure(state="normal", text="Selecionar Documento Técnico")
+        self.audit_status_label.configure(
+            text="Falha ao processar o documento.",
+            text_color="#FF6B6B"
+        )
+        messagebox.showerror("Erro", f"Não foi possível concluir a auditoria:\n{error_message}")
 
     def show_review_panel(self):
         for w in self.content_area.winfo_children(): w.destroy()

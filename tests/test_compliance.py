@@ -54,5 +54,34 @@ class TestSACR(unittest.TestCase):
         mock_client_cls.assert_called_once_with(api_key="test-key")
         mock_client.models.generate_content.assert_called_once()
 
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("src.engine.VectorIndexManager")
+    @patch("src.engine.genai.Client")
+    def test_audit_document_requires_api_key(self, mock_client_cls, mock_vector_cls):
+        from src.engine import AIConfigurationError, ComplianceEngine
+
+        engine = ComplianceEngine()
+
+        with self.assertRaises(AIConfigurationError):
+            engine.audit_document("documento tecnico", "doc.pdf")
+
+    @patch("src.engine.VectorIndexManager")
+    @patch("src.engine.genai.Client")
+    def test_audit_document_rejects_invalid_api_key(self, mock_client_cls, mock_vector_cls):
+        from src.engine import AIConfigurationError, ComplianceEngine
+
+        mock_vector = mock_vector_cls.return_value
+        mock_vector.get_context_with_citations.return_value = "legal context"
+
+        mock_client = mock_client_cls.return_value
+        mock_client.models.generate_content.side_effect = Exception(
+            "400 INVALID_ARGUMENT. API_KEY_INVALID. API key not valid."
+        )
+
+        engine = ComplianceEngine(api_key="invalid-key")
+
+        with self.assertRaises(AIConfigurationError):
+            engine.audit_document("documento tecnico", "doc.pdf")
+
 if __name__ == "__main__":
     unittest.main()

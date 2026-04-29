@@ -2,12 +2,15 @@ import os
 import json
 from google import genai
 from google.genai import types
-from config import GEMINI_MODEL
+from config import GEMINI_API_KEY, GEMINI_MODEL
 from src.vector_store import VectorIndexManager
+
+class AIConfigurationError(RuntimeError):
+    pass
 
 class ComplianceEngine:
     def __init__(self, api_key=None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.api_key = (api_key or os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY).strip().strip('"').strip("'")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else genai.Client()
         self.vector_store = VectorIndexManager()
         
@@ -36,6 +39,11 @@ class ComplianceEngine:
         """
 
     def audit_document(self, doc_text, filename):
+        if not self.api_key:
+            raise AIConfigurationError(
+                "GEMINI_API_KEY não configurada. Defina uma chave válida e reinicie o aplicativo."
+            )
+
         # 1. Search for relevant legal context
         # We'll use the filename or first paragraph as context search
         search_query = doc_text[:500] 
@@ -63,6 +71,17 @@ class ComplianceEngine:
             )
             return json.loads(response.text)
         except Exception as e:
+            error_text = str(e)
+            if (
+                "API_KEY_INVALID" in error_text
+                or "API key not valid" in error_text
+                or "GEMINI_API_KEY" in error_text
+            ):
+                raise AIConfigurationError(
+                    "A chave GEMINI_API_KEY foi recusada pela API do Google. "
+                    "Verifique se a chave está correta, ativa e foi criada para a Gemini API."
+                ) from e
+
             print(f"Error in AI Audit: {e}")
             return {
                 "status": "Inconclusivo",
